@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Any, Literal
+from datetime import datetime, timezone
 import random
 import uuid
 
@@ -21,6 +22,7 @@ class NBARequest(BaseModel):
     session_id: str
     page: str
     zones: list[str]
+    timestamp: datetime
 
 
 class ZoneAction(BaseModel):
@@ -31,8 +33,13 @@ class ZoneAction(BaseModel):
 
 
 class NBAResponse(BaseModel):
+    interaction_id: str
     user_id: str
+    page: str
+    zones: list[str]
     actions: list[ZoneAction]
+    request_timestamp: datetime
+    response_timestamp: datetime
 
 
 # --- Mock data pool per zone ---
@@ -94,15 +101,19 @@ def get_next_best_action(request: NBARequest):
                 action_value=action["action_value"],
                 metadata={
                     **action["metadata"],
-                    "page": request.page,
                     "trace_id": str(uuid.uuid4()),
                 },
             )
         )
 
     return NBAResponse(
+        interaction_id=str(uuid.uuid4()),
         user_id=request.user_id,
+        page=request.page,
+        zones=request.zones,
         actions=actions,
+        request_timestamp=request.timestamp,
+        response_timestamp=datetime.now(timezone.utc),
     )
 
 
