@@ -1,6 +1,6 @@
 # Next Best Action — Mock Service
 
-A deployable mock service that returns 3 ranked segment options per zone, influenced by session and context signals.
+A deployable mock service that returns personalised segment options per zone, driven by session and context signals. Each zone category has its own selection rules and option count.
 
 ## Run locally
 
@@ -46,11 +46,20 @@ fly deploy
 | `user_id` | string | yes | Unique user identifier |
 | `session_id` | string | yes | Current session identifier |
 | `page` | string | yes | Page being personalised e.g. `homepage` |
-| `zones` | string[] | yes | Zones to return actions for |
+| `zones` | ZoneRequest[] | yes | Zones to return actions for — see below |
 | `timestamp` | ISO 8601 | yes | Request time |
 | `session` | object | no | Session signals — see below |
 | `context` | object | no | Page context signals — see below |
 | `api_version` | string | no | Schema version, default `1.0` |
+
+### `zones` — array of zone objects
+
+Each zone has a `name` (your identifier for that slot on the page) and a `category` (which pool and rules to apply).
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Zone identifier e.g. `hero_banner`, `cat_grid` |
+| `category` | string | One of: `hero`, `categories`, `recommendations`, `loyalty`, `articles` |
 
 ### `session` object (all optional)
 
@@ -70,15 +79,21 @@ fly deploy
 | `day_of_week` | string | e.g. `saturday` |
 | `country` | string | ISO country code e.g. `GB` |
 
-### Supported zones
+---
 
-`hero` · `recommendations` · `categories` · `loyalty` · `articles`
+## Zone categories — rules and segments
 
-Any unknown zone falls back to a generic segment pool.
+| Category | Options returned | Selection | Segments |
+|---|---|---|---|
+| `hero` | 1 | Random | VIP Platinum, Young Mom, Young Professional, Lapsed Customer |
+| `categories` | 3 | Random ranked | outerwear, knitwear, accessories, dresses, shoes, basics |
+| `recommendations` | 1 | Signal-ranked | trending_products, recently_viewed, top_rated, new_arrivals_recs, campaign_picks, bestsellers, morning_picks, weekend_specials |
+| `loyalty` | 3 | Signal-ranked | gold_tier, silver_tier, join_loyalty, points_balance, tier_progress, loyalty_offer, weekend_bonus, campaign_loyalty |
+| `articles` | 3 | Signal-ranked | how_to_guides, trending_articles, editorial_spotlight, newsletter_teaser, campaign_editorial, morning_reads, weekend_reads, returning_faves |
 
 ### Signal logic
 
-The service derives signal tags from the optional fields and uses them to rank the 3 options returned per zone:
+Session and context fields are converted into signal tags that influence ranking for signal-ranked zones:
 
 | Input | Signal tag |
 |---|---|
@@ -90,7 +105,7 @@ The service derives signal tags from the optional fields and uses them to rank t
 | `time_of_day: morning` | `morning` |
 | `day_of_week: saturday` or `sunday` | `weekend` |
 
-If no session or context is provided the service falls back to generic untagged segments.
+`hero` and `categories` ignore signals — their selection is always random.
 
 ---
 
@@ -103,7 +118,13 @@ curl -X POST https://your-deployed-url/next-best-action \
     "user_id": "u_123",
     "session_id": "sess_abc",
     "page": "homepage",
-    "zones": ["hero", "recommendations", "loyalty"],
+    "zones": [
+      { "name": "hero_banner", "category": "hero" },
+      { "name": "cat_grid",    "category": "categories" },
+      { "name": "recs_row",    "category": "recommendations" },
+      { "name": "loyalty_bar", "category": "loyalty" },
+      { "name": "blog_strip",  "category": "articles" }
+    ],
     "timestamp": "2026-04-22T09:15:00Z",
     "session": {
       "is_new": true,
@@ -128,46 +149,53 @@ curl -X POST https://your-deployed-url/next-best-action \
   "interaction_id": "a3f8c2d1-...",
   "user_id": "u_123",
   "page": "homepage",
-  "zones": ["hero", "recommendations", "loyalty"],
+  "zones": ["hero_banner", "cat_grid", "recs_row", "loyalty_bar", "blog_strip"],
   "signals_applied": ["campaign", "morning", "new_user", "paid_search"],
   "actions": [
     {
-      "zone": "hero",
+      "zone": "hero_banner",
+      "category": "hero",
       "action_type": "segment",
       "options": [
-        {
-          "rank": 1,
-          "action_value": "welcome_visitor",
-          "metadata": { "headline": "Welcome!", "cta": "Explore", "trace_id": "..." }
-        },
-        {
-          "rank": 2,
-          "action_value": "campaign_hero",
-          "metadata": { "headline": "Campaign Feature", "cta": "Shop Now", "trace_id": "..." }
-        },
-        {
-          "rank": 3,
-          "action_value": "morning_pick",
-          "metadata": { "headline": "Start Your Day", "cta": "See Today's Picks", "trace_id": "..." }
-        }
+        { "rank": 1, "action_value": "Young Professional", "metadata": { "trace_id": "..." } }
       ]
     },
     {
-      "zone": "recommendations",
+      "zone": "cat_grid",
+      "category": "categories",
       "action_type": "segment",
       "options": [
-        { "rank": 1, "action_value": "new_arrivals_recs", "metadata": { "algorithm": "recency_based", "count": 8, "trace_id": "..." } },
-        { "rank": 2, "action_value": "campaign_picks",    "metadata": { "algorithm": "campaign_curated", "count": 6, "trace_id": "..." } },
-        { "rank": 3, "action_value": "trending_products", "metadata": { "algorithm": "collaborative_filter", "count": 8, "trace_id": "..." } }
+        { "rank": 1, "action_value": "outerwear",    "metadata": { "trace_id": "..." } },
+        { "rank": 2, "action_value": "accessories",  "metadata": { "trace_id": "..." } },
+        { "rank": 3, "action_value": "dresses",      "metadata": { "trace_id": "..." } }
       ]
     },
     {
-      "zone": "loyalty",
+      "zone": "recs_row",
+      "category": "recommendations",
+      "action_type": "segment",
+      "options": [
+        { "rank": 1, "action_value": "new_arrivals_recs", "metadata": { "count": 8, "trace_id": "..." } }
+      ]
+    },
+    {
+      "zone": "loyalty_bar",
+      "category": "loyalty",
       "action_type": "segment",
       "options": [
         { "rank": 1, "action_value": "join_loyalty",    "metadata": { "reward": "200 welcome points", "cta": "Join Now", "trace_id": "..." } },
         { "rank": 2, "action_value": "loyalty_offer",   "metadata": { "cta": "Claim Reward", "trace_id": "..." } },
         { "rank": 3, "action_value": "campaign_loyalty","metadata": { "cta": "Campaign Reward", "trace_id": "..." } }
+      ]
+    },
+    {
+      "zone": "blog_strip",
+      "category": "articles",
+      "action_type": "segment",
+      "options": [
+        { "rank": 1, "action_value": "newsletter_teaser",  "metadata": { "topic": "weekly_picks",  "count": 3, "trace_id": "..." } },
+        { "rank": 2, "action_value": "campaign_editorial", "metadata": { "topic": "campaign_theme","count": 4, "trace_id": "..." } },
+        { "rank": 3, "action_value": "morning_reads",      "metadata": { "topic": "daily_picks",   "count": 3, "trace_id": "..." } }
       ]
     }
   ],
@@ -182,9 +210,12 @@ curl -X POST https://your-deployed-url/next-best-action \
 |---|---|
 | `interaction_id` | Unique ID for this request — use for tracing and logging |
 | `signals_applied` | Signal tags derived from session and context that influenced ranking |
+| `actions[].zone` | Zone name as provided in the request |
+| `actions[].category` | Zone category used to select the pool and rules |
 | `actions[].action_type` | Always `segment` |
-| `actions[].options` | 3 distinct segment options ranked 1 (best match) to 3 |
-| `options[].rank` | 1 = highest signal relevance, 3 = lowest |
+| `actions[].options` | 1 or 3 segment options depending on category — see zone rules table |
+| `options[].rank` | 1 = best match or first random pick, ascending |
+| `options[].metadata.count` | Number of items to display (recommendations only) |
 | `options[].metadata.trace_id` | Per-option trace identifier |
 
 ---
