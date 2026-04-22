@@ -182,9 +182,7 @@ curl -X POST https://your-deployed-url/next-best-action \
       "category": "loyalty",
       "action_type": "segment",
       "options": [
-        { "rank": 1, "action_value": "join_loyalty",    "metadata": { "reward": "200 welcome points", "cta": "Join Now", "trace_id": "..." } },
-        { "rank": 2, "action_value": "loyalty_offer",   "metadata": { "cta": "Claim Reward", "trace_id": "..." } },
-        { "rank": 3, "action_value": "campaign_loyalty","metadata": { "cta": "Campaign Reward", "trace_id": "..." } }
+        { "rank": 1, "action_value": "join_loyalty", "metadata": { "reward": "200 welcome points", "cta": "Join Now", "trace_id": "..." } }
       ]
     },
     {
