@@ -87,8 +87,8 @@ Each zone has a `name` (your identifier for that slot on the page) and a `catego
 |---|---|---|---|
 | `hero` | 1 | Random | VIP Platinum, Young Mom, Young Professional, Lapsed Customer |
 | `categories` | 3 | Random ranked | outerwear, knitwear, accessories, dresses, shoes, basics |
-| `recommendations` | 1 | Signal-ranked | trending_products, recently_viewed, top_rated, new_arrivals_recs, campaign_picks, bestsellers, morning_picks, weekend_specials |
-| `loyalty` | 3 | Signal-ranked | gold_tier, silver_tier, join_loyalty, points_balance, tier_progress, loyalty_offer, weekend_bonus, campaign_loyalty |
+| `recommendations` | 1 | Random | outerwear, knitwear, accessories, dresses, shoes, basics |
+| `loyalty` | 1 | Signal-ranked | gold_tier, silver_tier, join_loyalty, points_balance, tier_progress, loyalty_offer, weekend_bonus, campaign_loyalty |
 | `articles` | 3 | Signal-ranked | how_to_guides, trending_articles, editorial_spotlight, newsletter_teaser, campaign_editorial, morning_reads, weekend_reads, returning_faves |
 
 ### Signal logic
@@ -150,7 +150,6 @@ curl -X POST https://your-deployed-url/next-best-action \
   "user_id": "u_123",
   "page": "homepage",
   "zones": ["hero_banner", "cat_grid", "recs_row", "loyalty_bar", "blog_strip"],
-  "signals_applied": ["campaign", "morning", "new_user", "paid_search"],
   "actions": [
     {
       "zone": "hero_banner",
@@ -209,7 +208,6 @@ curl -X POST https://your-deployed-url/next-best-action \
 | Field | Description |
 |---|---|
 | `interaction_id` | Unique ID for this request — use for tracing and logging |
-| `signals_applied` | Signal tags derived from session and context that influenced ranking |
 | `actions[].zone` | Zone name as provided in the request |
 | `actions[].category` | Zone category used to select the pool and rules |
 | `actions[].action_type` | Always `segment` |

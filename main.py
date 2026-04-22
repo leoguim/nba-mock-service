@@ -67,7 +67,6 @@ class NBAResponse(BaseModel):
     page: str
     zones: list[str]
     actions: list[ZoneAction]
-    signals_applied: list[str]
     request_timestamp: datetime
     response_timestamp: datetime
 
@@ -241,26 +240,23 @@ def build_categories(signals: set[str]) -> list[SegmentOption]:
 
 
 def build_recommendations(signals: set[str]) -> list[SegmentOption]:
-    """1 recommendation segment — best signal match wins."""
-    opt = pick_one_signal(RECOMMENDATION_SEGMENTS, signals)
+    """1 recommendation — random pick from the same category pool."""
+    segment = random.choice(CATEGORY_OPTIONS)
     return [SegmentOption(
-        action_value=opt["action_value"],
+        action_value=segment,
         rank=1,
-        metadata={"count": opt["metadata"]["count"], "trace_id": str(uuid.uuid4())},
+        metadata={"trace_id": str(uuid.uuid4())},
     )]
 
 
 def build_loyalty(signals: set[str]) -> list[SegmentOption]:
-    """3 signal-ranked loyalty segments."""
-    opts = pick_n_signal(LOYALTY_SEGMENTS, signals, 3)
-    return [
-        SegmentOption(
-            action_value=opt["action_value"],
-            rank=rank,
-            metadata={**opt["metadata"], "trace_id": str(uuid.uuid4())},
-        )
-        for rank, opt in enumerate(opts, start=1)
-    ]
+    """1 signal-ranked loyalty segment."""
+    opt = pick_one_signal(LOYALTY_SEGMENTS, signals)
+    return [SegmentOption(
+        action_value=opt["action_value"],
+        rank=1,
+        metadata={**opt["metadata"], "trace_id": str(uuid.uuid4())},
+    )]
 
 
 def build_articles(signals: set[str]) -> list[SegmentOption]:
@@ -324,7 +320,6 @@ def get_next_best_action(request: NBARequest):
         page=request.page,
         zones=[z.name for z in request.zones],
         actions=actions,
-        signals_applied=sorted(signals) if signals else ["none"],
         request_timestamp=request.timestamp,
         response_timestamp=datetime.now(timezone.utc),
     )
